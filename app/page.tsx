@@ -139,9 +139,9 @@ export default function Home() {
                 <h2 className="text-xl font-black text-gray-800 mt-2 mb-1">
                   {result.activity.title}
                 </h2>
-                {result.activity.duration_mins != null && (
+                {result.activity.duration && (
                   <p className="text-xs text-gray-500 font-medium">
-                    ⏱ Estimasi waktu: {result.activity.duration_mins} menit
+                    Estimasi waktu: {result.activity.duration}
                   </p>
                 )}
               </>

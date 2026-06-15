@@ -1,9 +1,10 @@
 import type { Activity, ActivityFilters, ActivityResult } from '../types/activity'
-import { supabase } from './supabase'
+import { createClient } from './supabase/client'
 
 export async function fetchRandomActivity(
   filters: ActivityFilters
 ): Promise<ActivityResult> {
+  const supabase = createClient()
   let query = supabase.from('activities').select('*')
 
   if (filters.needsTools !== null) {
@@ -11,7 +12,9 @@ export async function fetchRandomActivity(
   }
 
   if (filters.maxChildAge !== null) {
-    query = query.lte('min_age', filters.maxChildAge)
+    query = query
+      .lte('min_age', filters.maxChildAge)
+      .gte('max_age', filters.maxChildAge)
   }
 
   const { data, error } = await query
