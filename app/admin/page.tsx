@@ -12,6 +12,7 @@ import {
   type ActivityPayload,
 } from '../lib/admin-activities'
 import { getFilterCategoryOptions } from '../lib/activity-categories'
+import { getNextActivityId, hasNextActivity } from '../lib/admin-navigation'
 import { filterActivities } from '../lib/filter-activities'
 import { paginateItems, type PageSize } from '../lib/paginate'
 import StatsCards from '../components/admin/StatsCards'
@@ -19,7 +20,9 @@ import ActivityFilters from '../components/admin/ActivityFilters'
 import ActivityTableControls from '../components/admin/ActivityTableControls'
 import ActivityTable from '../components/admin/ActivityTable'
 import ActivityForm from '../components/admin/ActivityForm'
-import ActivityDetailPanel from '../components/admin/ActivityDetailPanel'
+import ActivityDetailPanel, {
+  type SaveAction,
+} from '../components/admin/ActivityDetailPanel'
 
 export default function AdminDashboardPage() {
   const [activities, setActivities] = useState<Activity[]>([])
@@ -28,6 +31,7 @@ export default function AdminDashboardPage() {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [pageItems, setPageItems] = useState<Activity[]>([])
   const [filters, setFilters] = useState(emptyAdminFilters)
   const [pageSize, setPageSize] = useState<PageSize>(10)
   const [currentPage, setCurrentPage] = useState(1)
@@ -47,6 +51,7 @@ export default function AdminDashboardPage() {
       showToast(result.message)
     }
     setLoading(false)
+    return result
   }, [showToast])
 
   useEffect(() => {
@@ -78,31 +83,41 @@ export default function AdminDashboardPage() {
     [activities]
   )
 
+  const hasNext = selectedActivity
+    ? hasNextActivity(pageItems, selectedActivity.id)
+    : false
+
+  const openActivityById = async (id: number) => {
+    setDetailLoading(true)
+    setSelectedActivity(null)
+
+    const result = await getActivityById(id)
+    setDetailLoading(false)
+
+    if (!result.ok) {
+      showToast(result.message)
+      return false
+    }
+
+    setSelectedActivity(result.data)
+    return true
+  }
+
   const handleOpenCreate = () => {
     setFormOpen(true)
   }
 
   const handleViewDetail = async (activity: Activity) => {
+    setPageItems(paginatedResult.items)
     setDetailOpen(true)
-    setDetailLoading(true)
-    setSelectedActivity(null)
-
-    const result = await getActivityById(activity.id)
-    setDetailLoading(false)
-
-    if (!result.ok) {
-      showToast(result.message)
-      setDetailOpen(false)
-      return
-    }
-
-    setSelectedActivity(result.data)
+    await openActivityById(activity.id)
   }
 
   const handleCloseDetail = () => {
     setDetailOpen(false)
     setSelectedActivity(null)
     setDetailLoading(false)
+    setPageItems([])
   }
 
   const handleCreateSubmit = async (payload: ActivityPayload) => {
@@ -113,13 +128,28 @@ export default function AdminDashboardPage() {
     return { ok: true }
   }
 
-  const handleDetailSubmit = async (payload: ActivityPayload) => {
+  const handleSaveDetail = async (payload: ActivityPayload, action: SaveAction) => {
     if (!selectedActivity) return { ok: false, message: 'Aktivitas tidak ditemukan.' }
+
+    const nextId =
+      action === 'next' ? getNextActivityId(pageItems, selectedActivity.id) : null
 
     const result = await updateActivity(selectedActivity.id, payload)
     if (!result.ok) return { ok: false, message: result.message }
+
     showToast('Aktivitas berhasil diperbarui.')
     await loadActivities()
+
+    if (action === 'close') {
+      handleCloseDetail()
+      return { ok: true }
+    }
+
+    if (nextId === null) {
+      return { ok: true }
+    }
+
+    await openActivityById(nextId)
     return { ok: true }
   }
 
@@ -205,8 +235,9 @@ export default function AdminDashboardPage() {
         open={detailOpen}
         activity={selectedActivity}
         loading={detailLoading}
+        hasNext={hasNext}
         onClose={handleCloseDetail}
-        onSubmit={handleDetailSubmit}
+        onSave={handleSaveDetail}
         onDelete={handleDelete}
       />
 

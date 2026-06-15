@@ -6,12 +6,15 @@ import type { ActivityPayload } from '../../lib/admin-activities'
 import { emptyActivityPayload } from '../../lib/admin-activities'
 import ActivityFormFields from './ActivityFormFields'
 
+export type SaveAction = 'close' | 'next'
+
 type ActivityDetailPanelProps = {
   open: boolean
   activity: Activity | null
   loading: boolean
+  hasNext: boolean
   onClose: () => void
-  onSubmit: (payload: ActivityPayload) => Promise<{ ok: boolean; message?: string }>
+  onSave: (payload: ActivityPayload, action: SaveAction) => Promise<{ ok: boolean; message?: string }>
   onDelete: (activity: Activity) => void
 }
 
@@ -31,8 +34,9 @@ export default function ActivityDetailPanel({
   open,
   activity,
   loading,
+  hasNext,
   onClose,
-  onSubmit,
+  onSave,
   onDelete,
 }: ActivityDetailPanelProps) {
   const [form, setForm] = useState<ActivityPayload>(emptyActivityPayload)
@@ -47,40 +51,39 @@ export default function ActivityDetailPanel({
 
   if (!open) return null
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-
+  const validateAndBuildPayload = (): ActivityPayload | null => {
     if (!form.title.trim()) {
       setError('Nama aktivitas wajib diisi.')
-      return
+      return null
     }
-
     if (!form.short_desc.trim()) {
       setError('Deskripsi singkat wajib diisi.')
-      return
+      return null
     }
-
     if (!form.category.trim()) {
       setError('Kategori wajib diisi.')
-      return
+      return null
     }
-
-    setSaving(true)
-    const result = await onSubmit({
+    return {
       ...form,
       title: form.title.trim(),
       short_desc: form.short_desc.trim(),
       category: form.category.trim(),
-    })
+    }
+  }
+
+  const handleSave = async (action: SaveAction) => {
+    setError(null)
+    const payload = validateAndBuildPayload()
+    if (!payload) return
+
+    setSaving(true)
+    const result = await onSave(payload, action)
     setSaving(false)
 
     if (!result.ok) {
       setError(result.message ?? 'Terjadi kesalahan.')
-      return
     }
-
-    onClose()
   }
 
   const handleDelete = () => {
@@ -88,63 +91,111 @@ export default function ActivityDetailPanel({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full border border-slate-200 max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-slate-200 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-bold text-slate-800">Detail Aktivitas</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Semua kolom dari database — edit lalu simpan</p>
+    <>
+      <div
+        className="fixed inset-0 bg-black/40 z-40"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <aside
+        className="fixed inset-y-0 right-0 z-50 w-full max-w-xl lg:max-w-2xl bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-drawer-title"
+      >
+        <div className="px-6 py-4 border-b border-slate-200 flex items-start justify-between gap-4 shrink-0">
+          <div>
+            <h2 id="edit-drawer-title" className="text-lg font-bold text-slate-800">
+              Edit Aktivitas
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {activity ? activity.title : 'Memuat...'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-2xl leading-none px-1"
+            aria-label="Tutup"
+          >
+            ×
+          </button>
         </div>
 
         {loading ? (
-          <div className="px-6 py-12 text-center text-slate-500">Memuat detail...</div>
+          <div className="flex-1 flex items-center justify-center text-slate-500">
+            Memuat detail...
+          </div>
         ) : activity ? (
-          <form onSubmit={handleSubmit} className="px-6 py-4">
-            <section className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 mb-1">ID</p>
-                <p className="text-sm font-mono text-slate-800">{activity.id}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 mb-1">Dibuat</p>
-                <p className="text-sm text-slate-800">{formatDate(activity.created_at)}</p>
-              </div>
-            </section>
+          <>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <section className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">ID</p>
+                  <p className="text-sm font-mono text-slate-800">{activity.id}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Dibuat</p>
+                  <p className="text-sm text-slate-800">{formatDate(activity.created_at)}</p>
+                </div>
+              </section>
 
-            <ActivityFormFields form={form} onChange={setForm} />
+              <ActivityFormFields form={form} onChange={setForm} />
 
-            {error && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-4">
-                {error}
-              </p>
-            )}
-
-            <div className="flex gap-3 pt-6 mt-6 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="border border-red-300 text-red-600 hover:bg-red-50 font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
-              >
-                Hapus
-              </button>
-              <div className="flex-1" />
-              <button
-                type="button"
-                onClick={onClose}
-                className="border border-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-slate-50 transition-colors"
-              >
-                Tutup
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
-              >
-                {saving ? 'Menyimpan...' : 'Simpan'}
-              </button>
+              {error && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-4">
+                  {error}
+                </p>
+              )}
             </div>
-          </form>
+
+            <div className="shrink-0 border-t border-slate-200 px-6 py-4 bg-white">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={saving}
+                  className="border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-60 font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+                >
+                  Hapus
+                </button>
+                <div className="flex-1" />
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={saving}
+                  className="border border-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-slate-50 disabled:opacity-60 transition-colors"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSave('close')}
+                  disabled={saving}
+                  className="bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+                >
+                  {saving ? 'Menyimpan...' : 'Simpan & Tutup'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSave('next')}
+                  disabled={saving || !hasNext}
+                  title={hasNext ? undefined : 'Record terakhir di halaman ini'}
+                  className="bg-slate-800 hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+                >
+                  {saving ? 'Menyimpan...' : 'Simpan & Berikutnya'}
+                </button>
+              </div>
+              {!hasNext && (
+                <p className="text-xs text-slate-400 mt-2 text-right">
+                  Record terakhir di halaman ini
+                </p>
+              )}
+            </div>
+          </>
         ) : null}
-      </div>
-    </div>
+      </aside>
+    </>
   )
 }

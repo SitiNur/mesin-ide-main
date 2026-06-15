@@ -45,7 +45,7 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="w-full max-w-full px-6 lg:px-8 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-black text-orange-600">PlayBox Admin</h1>
             <p className="text-xs text-slate-500">Kelola aktivitas bermain anak</p>
@@ -63,7 +63,7 @@ export default function AdminLayout({
           </div>
         </div>
       </header>
-      <main className="max-w-5xl mx-auto px-4 py-8">{children}</main>
+      <main className="w-full px-6 lg:px-8 py-8">{children}</main>
     </div>
   )
 }
