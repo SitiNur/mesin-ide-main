@@ -14,8 +14,19 @@ export function filterActivities(
       if (activity.category !== filters.category) return false
     }
 
-    if (filters.needsTools === 'true' && !activity.needs_tools) return false
-    if (filters.needsTools === 'false' && activity.needs_tools) return false
+    if (filters.status !== 'all' && activity.status !== filters.status) return false
+
+    if (filters.minAge !== null && activity.min_age !== filters.minAge) return false
+
+    if (filters.maxAge !== null && activity.max_age !== filters.maxAge) return false
+
+    if (filters.location !== 'all' && !activity.location.includes(filters.location)) {
+      return false
+    }
+
+    if (filters.bestTime !== 'all' && !activity.best_time.includes(filters.bestTime)) {
+      return false
+    }
 
     return true
   })

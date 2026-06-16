@@ -1,5 +1,7 @@
 import type { Activity } from '../types/activity'
+import type { ActivityStatus } from './activity-options'
 import { createClient } from './supabase/client'
+import { normalizeActivities, normalizeActivity } from './activity-mapper'
 
 export type ActivityPayload = Omit<Activity, 'id' | 'created_at'>
 
@@ -9,9 +11,8 @@ export const emptyActivityPayload: ActivityPayload = {
   benefit_tags: '',
   category: '',
   duration: '',
-  best_time: '',
-  location: '',
-  ideal_age: '',
+  best_time: [],
+  location: [],
   needs_tools: false,
   tools_list: '',
   prep_level: '',
@@ -22,7 +23,7 @@ export const emptyActivityPayload: ActivityPayload = {
   fun_fact: '',
   variations: '',
   suitable_mood: '',
-  status: 'Need Review',
+  status: 'need_review',
   min_age: 2,
   max_age: 8,
 }
@@ -37,12 +38,13 @@ export async function listActivities(): Promise<CrudResult<Activity[]>> {
     .from('activities')
     .select('*')
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
 
   if (error) {
     return { ok: false, message: 'Gagal memuat daftar aktivitas.' }
   }
 
-  return { ok: true, data: (data ?? []) as Activity[] }
+  return { ok: true, data: normalizeActivities((data ?? []) as Record<string, unknown>[]) }
 }
 
 export async function getActivityById(id: number): Promise<CrudResult<Activity>> {
@@ -57,7 +59,7 @@ export async function getActivityById(id: number): Promise<CrudResult<Activity>>
     return { ok: false, message: 'Gagal memuat detail aktivitas.' }
   }
 
-  return { ok: true, data: data as Activity }
+  return { ok: true, data: normalizeActivity(data as Record<string, unknown>) }
 }
 
 export async function createActivity(
@@ -74,7 +76,7 @@ export async function createActivity(
     return { ok: false, message: 'Gagal menambah aktivitas.' }
   }
 
-  return { ok: true, data: data as Activity }
+  return { ok: true, data: normalizeActivity(data as Record<string, unknown>) }
 }
 
 export async function updateActivity(
@@ -93,7 +95,26 @@ export async function updateActivity(
     return { ok: false, message: 'Gagal memperbarui aktivitas.' }
   }
 
-  return { ok: true, data: data as Activity }
+  return { ok: true, data: normalizeActivity(data as Record<string, unknown>) }
+}
+
+export async function updateActivityStatus(
+  id: number,
+  status: ActivityStatus
+): Promise<CrudResult<Activity>> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('activities')
+    .update({ status })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    return { ok: false, message: 'Gagal memperbarui status aktivitas.' }
+  }
+
+  return { ok: true, data: normalizeActivity(data as Record<string, unknown>) }
 }
 
 export async function deleteActivity(id: number): Promise<CrudResult<null>> {

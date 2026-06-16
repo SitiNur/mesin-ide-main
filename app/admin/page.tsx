@@ -9,12 +9,19 @@ import {
   getActivityById,
   listActivities,
   updateActivity,
+  updateActivityStatus,
   type ActivityPayload,
 } from '../lib/admin-activities'
 import { getFilterCategoryOptions } from '../lib/activity-categories'
 import { getNextActivityId, hasNextActivity } from '../lib/admin-navigation'
 import { filterActivities } from '../lib/filter-activities'
 import { paginateItems, type PageSize } from '../lib/paginate'
+import {
+  sortActivities,
+  toggleSort,
+  type ActivitySort,
+  type ActivitySortField,
+} from '../lib/sort-activities'
 import StatsCards from '../components/admin/StatsCards'
 import ActivityFilters from '../components/admin/ActivityFilters'
 import ActivityTableControls from '../components/admin/ActivityTableControls'
@@ -35,6 +42,8 @@ export default function AdminDashboardPage() {
   const [filters, setFilters] = useState(emptyAdminFilters)
   const [pageSize, setPageSize] = useState<PageSize>(10)
   const [currentPage, setCurrentPage] = useState(1)
+  const [approvingId, setApprovingId] = useState<number | null>(null)
+  const [sort, setSort] = useState<ActivitySort | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
   const showToast = useCallback((message: string) => {
@@ -63,14 +72,19 @@ export default function AdminDashboardPage() {
     [activities, filters]
   )
 
+  const sortedActivities = useMemo(() => {
+    if (!sort) return filteredActivities
+    return sortActivities(filteredActivities, sort)
+  }, [filteredActivities, sort])
+
   const paginatedResult = useMemo(
-    () => paginateItems(filteredActivities, currentPage, pageSize),
-    [filteredActivities, currentPage, pageSize]
+    () => paginateItems(sortedActivities, currentPage, pageSize),
+    [sortedActivities, currentPage, pageSize]
   )
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [filters, pageSize])
+  }, [filters, pageSize, sort])
 
   useEffect(() => {
     if (paginatedResult.currentPage !== currentPage) {
@@ -107,10 +121,14 @@ export default function AdminDashboardPage() {
     setFormOpen(true)
   }
 
-  const handleViewDetail = async (activity: Activity) => {
+  const handleEdit = async (activity: Activity) => {
     setPageItems(paginatedResult.items)
     setDetailOpen(true)
     await openActivityById(activity.id)
+  }
+
+  const handleSort = (field: ActivitySortField) => {
+    setSort((current) => toggleSort(current, field))
   }
 
   const handleCloseDetail = () => {
@@ -131,8 +149,8 @@ export default function AdminDashboardPage() {
   const handleSaveDetail = async (payload: ActivityPayload, action: SaveAction) => {
     if (!selectedActivity) return { ok: false, message: 'Aktivitas tidak ditemukan.' }
 
-    const nextId =
-      action === 'next' ? getNextActivityId(pageItems, selectedActivity.id) : null
+    const isNext = action === 'next'
+    const nextId = isNext ? getNextActivityId(pageItems, selectedActivity.id) : null
 
     const result = await updateActivity(selectedActivity.id, payload)
     if (!result.ok) return { ok: false, message: result.message }
@@ -140,17 +158,31 @@ export default function AdminDashboardPage() {
     showToast('Aktivitas berhasil diperbarui.')
     await loadActivities()
 
-    if (action === 'close') {
+    if (action === 'close' || nextId === null) {
       handleCloseDetail()
-      return { ok: true }
-    }
-
-    if (nextId === null) {
       return { ok: true }
     }
 
     await openActivityById(nextId)
     return { ok: true }
+  }
+
+  const handleApprove = async (activity: Activity) => {
+    setApprovingId(activity.id)
+    const result = await updateActivityStatus(activity.id, 'published')
+    setApprovingId(null)
+
+    if (!result.ok) {
+      showToast(result.message ?? 'Gagal mempublikasikan.')
+      return
+    }
+
+    showToast('Aktivitas dipublikasikan.')
+    await loadActivities()
+
+    if (selectedActivity?.id === activity.id) {
+      setSelectedActivity(result.data)
+    }
   }
 
   const handleDelete = async (activity: Activity) => {
@@ -175,7 +207,10 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <StatsCards activities={filteredActivities} />
+      <StatsCards
+        activities={activities}
+        onFilterStatus={(status) => setFilters({ ...filters, status })}
+      />
 
       <ActivityFilters
         filters={filters}
@@ -188,7 +223,7 @@ export default function AdminDashboardPage() {
           Daftar Aktivitas
           {!loading && (
             <span className="text-sm font-normal text-slate-500 ml-2">
-              ({filteredActivities.length} dari {activities.length})
+              ({sortedActivities.length} dari {activities.length})
             </span>
           )}
         </h2>
@@ -219,7 +254,11 @@ export default function AdminDashboardPage() {
           <ActivityTable
             activities={paginatedResult.items}
             startIndex={paginatedResult.startIndex}
-            onViewDetail={handleViewDetail}
+            sort={sort}
+            approvingId={approvingId}
+            onSort={handleSort}
+            onEdit={handleEdit}
+            onApprove={handleApprove}
             onDelete={handleDelete}
           />
         </>

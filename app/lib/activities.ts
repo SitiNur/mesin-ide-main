@@ -1,11 +1,12 @@
 import type { Activity, ActivityFilters, ActivityResult } from '../types/activity'
 import { createClient } from './supabase/client'
+import { normalizeActivity } from './activity-mapper'
 
 export async function fetchRandomActivity(
   filters: ActivityFilters
 ): Promise<ActivityResult> {
   const supabase = createClient()
-  let query = supabase.from('activities').select('*')
+  let query = supabase.from('activities').select('*').eq('status', 'published')
 
   if (filters.needsTools !== null) {
     query = query.eq('needs_tools', filters.needsTools)
@@ -34,5 +35,8 @@ export async function fetchRandomActivity(
   }
 
   const randomIndex = Math.floor(Math.random() * data.length)
-  return { status: 'found', activity: data[randomIndex] as Activity }
+  return {
+    status: 'found',
+    activity: normalizeActivity(data[randomIndex] as Record<string, unknown>),
+  }
 }

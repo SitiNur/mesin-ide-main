@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { fetchRandomActivity } from './lib/activities'
+import { getDurationLabel } from './lib/activity-options'
 import type { Activity } from './types/activity'
 
 type BoxState = 'idle' | 'shaking' | 'opened'
@@ -141,7 +142,7 @@ export default function Home() {
                 </h2>
                 {result.activity.duration && (
                   <p className="text-xs text-gray-500 font-medium">
-                    Estimasi waktu: {result.activity.duration}
+                    Estimasi waktu: {getDurationLabel(result.activity.duration)}
                   </p>
                 )}
               </>

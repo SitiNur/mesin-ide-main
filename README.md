@@ -50,7 +50,19 @@ Dashboard admin tersedia di [http://localhost:3000/admin](http://localhost:3000/
 
 ### Migrasi Database
 
-Jika kolom `description` masih ada dari migrasi lama, jalankan [`supabase/migration-drop-description.sql`](supabase/migration-drop-description.sql).
+- Hapus kolom `description`: [`supabase/migration-drop-description.sql`](supabase/migration-drop-description.sql)
+- Durasi slug + `best_time`/`location` sebagai array: [`supabase/migration-field-options.sql`](supabase/migration-field-options.sql)
+- Hapus kolom `ideal_age`: [`supabase/migration-drop-ideal-age.sql`](supabase/migration-drop-ideal-age.sql)
+
+### Field terstruktur
+
+| Kolom | Tipe DB | UI Admin |
+|-------|---------|----------|
+| `duration` | `TEXT` slug | Dropdown: `under_15`, `15_30`, `30_60`, `over_60` |
+| `best_time` | `TEXT[]` | Multi-select: pagi, siang, sore, sebelum_tidur |
+| `location` | `TEXT[]` | Multi-select: indoor, outdoor |
+
+Field tersembunyi di form (tetap di DB): `needs_tools`, `prep_level`, `tools_list`, `suitable_mood`.
 
 ### Fitur Admin
 
@@ -66,10 +78,10 @@ Jika kolom `description` masih ada dari migrasi lama, jalankan [`supabase/migrat
 | `title` | Nama aktivitas |
 | `short_desc` | Deskripsi singkat |
 | `category` | Kategori |
-| `duration` | Durasi (teks, misal "15–20 menit") |
-| `best_time` | Waktu terbaik |
-| `location` | Indoor / Outdoor |
-| `ideal_age` | Rentang usia ideal (teks) |
+| `duration` | Slug durasi (`under_15`, `15_30`, `30_60`, `over_60`) |
+| `best_time` | Array waktu (`pagi`, `siang`, `sore`, `sebelum_tidur`) |
+| `location` | Array lokasi (`indoor`, `outdoor`) |
+| `min_age` / `max_age` | Usia minimal/maksimal (angka) |
 | `needs_tools` | Perlu alat/bahan |
 | `tools_list` | Daftar alat |
 | `prep_level` | Tingkat persiapan |
@@ -81,7 +93,6 @@ Jika kolom `description` masih ada dari migrasi lama, jalankan [`supabase/migrat
 | `variations` | Variasi |
 | `suitable_mood` | Mood cocok |
 | `status` | Status (misal "Need Review") |
-| `min_age` / `max_age` | Usia minimal/maksimal (angka) |
 | `benefit_tags` | Tag manfaat |
 | `created_at` | Timestamp dibuat |
 

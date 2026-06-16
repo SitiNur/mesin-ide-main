@@ -1,6 +1,17 @@
 'use client'
 
 import type { ActivityPayload } from '../../lib/admin-activities'
+import {
+  ACTIVITY_STATUS_OPTIONS,
+  ALL_BEST_TIME_SLUGS,
+  BEST_TIME_OPTIONS,
+  DURATION_OPTIONS,
+  LOCATION_OPTIONS,
+  type ActivityStatus,
+  type BestTimeSlug,
+  type LocationSlug,
+  toggleArrayItem,
+} from '../../lib/activity-options'
 
 const inputClass =
   'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400'
@@ -10,6 +21,60 @@ const labelClass = 'block text-sm font-semibold text-slate-700 mb-1'
 type ActivityFormFieldsProps = {
   form: ActivityPayload
   onChange: (form: ActivityPayload) => void
+}
+
+function MultiSelectCheckboxes<T extends string>({
+  label,
+  options,
+  selected,
+  onChange,
+  allOption,
+}: {
+  label: string
+  options: readonly { value: T; label: string }[]
+  selected: T[]
+  onChange: (values: T[]) => void
+  allOption?: { label: string; allValues: T[] }
+}) {
+  const allSelected =
+    allOption !== undefined &&
+    allOption.allValues.length > 0 &&
+    allOption.allValues.every((v) => selected.includes(v))
+
+  return (
+    <fieldset>
+      <legend className={labelClass}>{label}</legend>
+      <div className="mt-2 space-y-2 rounded-lg border border-slate-200 p-3 bg-slate-50">
+        {allOption && (
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={() =>
+                onChange(allSelected ? [] : [...allOption.allValues])
+              }
+              className="rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+            />
+            {allOption.label}
+          </label>
+        )}
+        {options.map((opt) => (
+          <label
+            key={opt.value}
+            className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer"
+          >
+            <input
+              type="checkbox"
+              checked={selected.includes(opt.value)}
+              onChange={() => onChange(toggleArrayItem(selected, opt.value))}
+              className="rounded border-slate-300 text-orange-500 focus:ring-orange-400"
+            />
+            {opt.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  )
 }
 
 export default function ActivityFormFields({ form, onChange }: ActivityFormFieldsProps) {
@@ -35,35 +100,60 @@ export default function ActivityFormFields({ form, onChange }: ActivityFormField
         </div>
         <div>
           <label htmlFor="field-status" className={labelClass}>Status</label>
-          <input id="field-status" type="text" value={form.status} onChange={(e) => set('status', e.target.value)} className={inputClass} />
+          <select
+            id="field-status"
+            value={form.status}
+            onChange={(e) => set('status', e.target.value as ActivityStatus)}
+            className={`${inputClass} bg-white`}
+          >
+            {ACTIVITY_STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
       </section>
 
       <section className="space-y-4">
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Waktu & Tempat</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="field-duration" className={labelClass}>Durasi</label>
-            <input id="field-duration" type="text" value={form.duration} onChange={(e) => set('duration', e.target.value)} className={inputClass} placeholder="15–20 menit" />
-          </div>
-          <div>
-            <label htmlFor="field-best-time" className={labelClass}>Waktu Terbaik</label>
-            <input id="field-best-time" type="text" value={form.best_time} onChange={(e) => set('best_time', e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="field-location" className={labelClass}>Lokasi</label>
-            <input id="field-location" type="text" value={form.location} onChange={(e) => set('location', e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="field-prep-level" className={labelClass}>Tingkat Persiapan</label>
-            <input id="field-prep-level" type="text" value={form.prep_level} onChange={(e) => set('prep_level', e.target.value)} className={inputClass} />
-          </div>
+        <div>
+          <label htmlFor="field-duration" className={labelClass}>Durasi</label>
+          <select
+            id="field-duration"
+            required
+            value={form.duration}
+            onChange={(e) => set('duration', e.target.value)}
+            className={`${inputClass} bg-white`}
+          >
+            <option value="">Pilih durasi...</option>
+            {DURATION_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
+
+        <MultiSelectCheckboxes
+          label="Waktu Terbaik"
+          options={BEST_TIME_OPTIONS}
+          selected={form.best_time as BestTimeSlug[]}
+          onChange={(values) => set('best_time', values)}
+          allOption={{ label: 'Semua waktu', allValues: ALL_BEST_TIME_SLUGS }}
+        />
+
+        <MultiSelectCheckboxes
+          label="Lokasi"
+          options={LOCATION_OPTIONS}
+          selected={form.location as LocationSlug[]}
+          onChange={(values) => set('location', values)}
+        />
       </section>
 
       <section className="space-y-4">
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Usia</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="field-min-age" className={labelClass}>Usia Min.</label>
             <input id="field-min-age" type="number" min={1} required value={form.min_age} onChange={(e) => set('min_age', Number.parseInt(e.target.value, 10) || 1)} className={inputClass} />
@@ -71,27 +161,6 @@ export default function ActivityFormFields({ form, onChange }: ActivityFormField
           <div>
             <label htmlFor="field-max-age" className={labelClass}>Usia Maks.</label>
             <input id="field-max-age" type="number" min={1} required value={form.max_age} onChange={(e) => set('max_age', Number.parseInt(e.target.value, 10) || 1)} className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="field-ideal-age" className={labelClass}>Usia Ideal</label>
-            <input id="field-ideal-age" type="text" value={form.ideal_age} onChange={(e) => set('ideal_age', e.target.value)} className={inputClass} />
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Alat</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="field-needs-tools" className={labelClass}>Perlu Alat</label>
-            <select id="field-needs-tools" value={form.needs_tools ? 'true' : 'false'} onChange={(e) => set('needs_tools', e.target.value === 'true')} className={`${inputClass} bg-white`}>
-              <option value="false">Tanpa alat</option>
-              <option value="true">Perlu alat/bahan</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="field-tools-list" className={labelClass}>Daftar Alat</label>
-            <textarea id="field-tools-list" rows={2} value={form.tools_list} onChange={(e) => set('tools_list', e.target.value)} className={textareaClass} />
           </div>
         </div>
       </section>
@@ -117,7 +186,6 @@ export default function ActivityFormFields({ form, onChange }: ActivityFormField
           ['benefit_tags', 'Manfaat', 2],
           ['fun_fact', 'Fakta Menarik', 3],
           ['variations', 'Variasi', 3],
-          ['suitable_mood', 'Mood Cocok', 2],
         ] as const).map(([key, label, rows]) => (
           <div key={key}>
             <label htmlFor={`field-${key}`} className={labelClass}>{label}</label>

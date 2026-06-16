@@ -10,9 +10,8 @@ CREATE TABLE IF NOT EXISTS activities (
   benefit_tags TEXT NOT NULL DEFAULT '',
   category TEXT NOT NULL DEFAULT '',
   duration TEXT NOT NULL DEFAULT '',
-  best_time TEXT NOT NULL DEFAULT '',
-  location TEXT NOT NULL DEFAULT '',
-  ideal_age TEXT NOT NULL DEFAULT '',
+  best_time TEXT[] NOT NULL DEFAULT '{}',
+  location TEXT[] NOT NULL DEFAULT '{}',
   needs_tools BOOLEAN NOT NULL DEFAULT false,
   tools_list TEXT NOT NULL DEFAULT '',
   prep_level TEXT NOT NULL DEFAULT '',
@@ -23,10 +22,16 @@ CREATE TABLE IF NOT EXISTS activities (
   fun_fact TEXT NOT NULL DEFAULT '',
   variations TEXT NOT NULL DEFAULT '',
   suitable_mood TEXT NOT NULL DEFAULT '',
-  status TEXT NOT NULL DEFAULT 'Need Review',
+  status TEXT NOT NULL DEFAULT 'need_review',
   min_age INTEGER NOT NULL DEFAULT 2,
   max_age INTEGER NOT NULL DEFAULT 8,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT activities_duration_check CHECK (
+    duration IN ('', 'under_15', '15_30', '30_60', 'over_60')
+  ),
+  CONSTRAINT activities_status_check CHECK (
+    status IN ('need_review', 'published', 'hidden')
+  )
 );
 
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
@@ -35,4 +40,4 @@ DROP POLICY IF EXISTS "Allow public read" ON activities;
 CREATE POLICY "Allow public read"
   ON activities FOR SELECT
   TO anon
-  USING (true);
+  USING (status = 'published');

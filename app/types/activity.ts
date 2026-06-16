@@ -1,3 +1,5 @@
+import type { ActivityStatus, BestTimeSlug, LocationSlug } from '../lib/activity-options'
+
 export type Activity = {
   id: number
   title: string
@@ -5,9 +7,8 @@ export type Activity = {
   benefit_tags: string
   category: string
   duration: string
-  best_time: string
-  location: string
-  ideal_age: string
+  best_time: string[]
+  location: string[]
   needs_tools: boolean
   tools_list: string
   prep_level: string
@@ -18,7 +19,7 @@ export type Activity = {
   fun_fact: string
   variations: string
   suitable_mood: string
-  status: string
+  status: ActivityStatus
   created_at: string
   min_age: number
   max_age: number
@@ -32,13 +33,21 @@ export type ActivityFilters = {
 export type AdminActivityFilters = {
   title: string
   category: string
-  needsTools: 'all' | 'true' | 'false'
+  status: ActivityStatus | 'all'
+  minAge: number | null
+  maxAge: number | null
+  location: LocationSlug | 'all'
+  bestTime: BestTimeSlug | 'all'
 }
 
 export const emptyAdminFilters: AdminActivityFilters = {
   title: '',
   category: '',
-  needsTools: 'all',
+  status: 'all',
+  minAge: null,
+  maxAge: null,
+  location: 'all',
+  bestTime: 'all',
 }
 
 export type ActivityResult =

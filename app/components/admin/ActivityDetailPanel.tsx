@@ -5,6 +5,7 @@ import type { Activity } from '../../types/activity'
 import type { ActivityPayload } from '../../lib/admin-activities'
 import { emptyActivityPayload } from '../../lib/admin-activities'
 import ActivityFormFields from './ActivityFormFields'
+import { getStatusBadgeClass, getStatusLabel } from '../../lib/activity-options'
 
 export type SaveAction = 'close' | 'next'
 
@@ -51,6 +52,8 @@ export default function ActivityDetailPanel({
 
   if (!open) return null
 
+  const isUnpublished = activity?.status !== 'published'
+
   const validateAndBuildPayload = (): ActivityPayload | null => {
     if (!form.title.trim()) {
       setError('Nama aktivitas wajib diisi.')
@@ -62,6 +65,10 @@ export default function ActivityDetailPanel({
     }
     if (!form.category.trim()) {
       setError('Kategori wajib diisi.')
+      return null
+    }
+    if (!form.duration) {
+      setError('Durasi wajib dipilih.')
       return null
     }
     return {
@@ -84,6 +91,10 @@ export default function ActivityDetailPanel({
     if (!result.ok) {
       setError(result.message ?? 'Terjadi kesalahan.')
     }
+  }
+
+  const handleSaveAndNext = () => {
+    handleSave(hasNext ? 'next' : 'close')
   }
 
   const handleDelete = () => {
@@ -130,7 +141,7 @@ export default function ActivityDetailPanel({
         ) : activity ? (
           <>
             <div className="flex-1 overflow-y-auto px-6 py-4">
-              <section className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <section className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <div>
                   <p className="text-xs font-semibold text-slate-500 mb-1">ID</p>
                   <p className="text-sm font-mono text-slate-800">{activity.id}</p>
@@ -138,6 +149,12 @@ export default function ActivityDetailPanel({
                 <div>
                   <p className="text-xs font-semibold text-slate-500 mb-1">Dibuat</p>
                   <p className="text-sm text-slate-800">{formatDate(activity.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Status</p>
+                  <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusBadgeClass(activity.status)}`}>
+                    {getStatusLabel(activity.status)}
+                  </span>
                 </div>
               </section>
 
@@ -151,7 +168,7 @@ export default function ActivityDetailPanel({
             </div>
 
             <div className="shrink-0 border-t border-slate-200 px-6 py-4 bg-white">
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
                 <button
                   type="button"
                   onClick={handleDelete}
@@ -169,25 +186,43 @@ export default function ActivityDetailPanel({
                 >
                   Tutup
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleSave('close')}
-                  disabled={saving}
-                  className="bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
-                >
-                  {saving ? 'Menyimpan...' : 'Simpan & Tutup'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSave('next')}
-                  disabled={saving || !hasNext}
-                  title={hasNext ? undefined : 'Record terakhir di halaman ini'}
-                  className="bg-slate-800 hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
-                >
-                  {saving ? 'Menyimpan...' : 'Simpan & Berikutnya'}
-                </button>
+                {isUnpublished ? (
+                  <button
+                    type="button"
+                    onClick={handleSaveAndNext}
+                    disabled={saving}
+                    className="bg-slate-800 hover:bg-slate-900 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+                  >
+                    {saving ? 'Menyimpan...' : hasNext ? 'Simpan & Berikutnya' : 'Simpan & Tutup'}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleSave('close')}
+                      disabled={saving}
+                      className="bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+                    >
+                      {saving ? 'Menyimpan...' : 'Simpan & Tutup'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSave('next')}
+                      disabled={saving || !hasNext}
+                      title={hasNext ? undefined : 'Record terakhir di halaman ini'}
+                      className="bg-slate-800 hover:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+                    >
+                      {saving ? 'Menyimpan...' : 'Simpan & Berikutnya'}
+                    </button>
+                  </>
+                )}
               </div>
-              {!hasNext && (
+              {isUnpublished && !hasNext && (
+                <p className="text-xs text-slate-400 mt-2 text-right">
+                  Record terakhir di halaman ini
+                </p>
+              )}
+              {!isUnpublished && !hasNext && (
                 <p className="text-xs text-slate-400 mt-2 text-right">
                   Record terakhir di halaman ini
                 </p>
